@@ -1,44 +1,45 @@
 import os
-from PyPDF2 import PdfReader, PdfWriter
+import PyPDF4
 
-# Directorio con archivos PDF
-directorio = "dir"
+# Ruta del directorio con archivos PDF de entrada
+input_directory = "dir"
 
-# Crea un objeto PdfWriter
-escribir = PdfWriter()
+# Ruta del directorio para guardar archivos PDF de salida
+output_directory = "dir"
 
-# Itera sobre todos los archivos PDF en el directorio
-for archivo in os.listdir(directorio):
-    if archivo.endswith(".pdf"):
-        # Crea un objeto PdfReader para cada archivo
-        ruta_archivo = os.path.join(directorio, archivo)
-        leer = PdfReader(ruta_archivo)
+# Iterar sobre todos los archivos PDF en el directorio de entrada
+for file_name in os.listdir(input_directory):
+    if file_name.endswith(".pdf"):
+        # Construir rutas completas de entrada y salida
+        input_path = os.path.join(input_directory, file_name)
+        output_path = os.path.join(output_directory, file_name)
 
-        # Itera sobre cada página del archivo
-        for numero in range(len(leer.pages)):
-            # Crea un objeto PdfReader para la página actual
-            pagina = leer.pages[numero]
-            reader = PdfReader()
-            reader.addPage(pagina)
+        # Abrir archivo PDF de entrada
+        pdf_reader = PyPDF4.PdfFileReader(input_path)
 
-            # Extrae el texto del cuerpo de la página
-            parts = []
-            def visitor_body(text, cm, tm, fontDict, fontSize):
-                y = tm[5]
-                if y > 50 and y < 720:
-                    parts.append(text)
-            reader.extract_text(visitor_text=visitor_body)
-            text_body = "".join(parts)
+        # Crear objeto para escribir PDF de salida
+        pdf_writer = PyPDF4.PdfFileWriter()
 
-            # Agrega cada página al objeto PdfWriter
-            escribir.add_page(pagina)
+        # Iterar sobre cada página del PDF de entrada
+        for page_num in range(pdf_reader.getNumPages()):
+            # Obtener página actual
+            page = pdf_reader.getPage(page_num)
 
-        # Nombre y ruta del archivo de salida
-        ruta_salida = ruta_archivo
+            # Obtener caja de media página
+            media_box = page.mediaBox
+            media_box_upper = media_box.getUpperRight_x(), media_box.getUpperRight_y() - (media_box.getUpperRight_y() * 0.1)
+            media_box.setUpperRight(media_box_upper)
 
-        # Escribe el archivo de salida
-        with open(ruta_salida, "wb") as out_file:
-            escribir.write(out_file)
+            media_box_lower = media_box.getLowerLeft_x(), media_box.getLowerLeft_y() + (media_box.getUpperRight_y() * 0.1)
+            media_box.setLowerLeft(media_box_lower)
 
-        # Vacía el objeto PdfWriter para el siguiente archivo
-        escribir = PdfWriter()
+            # Agregar página modificada al objeto PdfFileWriter
+            pdf_writer.addPage(page)
+
+        # Escribir archivo de salida
+        with open(output_path, "wb") as out_file:
+            pdf_writer.write(out_file)
+
+        # Cerrar archivos
+        out_file.close()
+        pdf_reader.stream.close()
